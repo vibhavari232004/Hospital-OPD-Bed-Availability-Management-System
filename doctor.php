@@ -1,0 +1,427 @@
+<?php
+require_once __DIR__ . '/db.php';
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mint OPD · Doctor Panel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Roboto, sans-serif;
+        }
+        body {
+            background: #f0faf0;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        .doctor-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #1a3b2e;
+            font-size: 2.8rem;
+            margin-bottom: 2rem;
+            border-left: 12px solid #2d8b65;
+            padding-left: 1.5rem;
+        }
+        .section {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 20px -5px #a3d8b2;
+            border: 2px solid #c0ead8;
+        }
+        .section h2 {
+            color: #1c5e45;
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #3d6e58;
+            font-weight: 500;
+        }
+        input, select, button, textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #c0ead8;
+            border-radius: 10px;
+            font-size: 1rem;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #2d8b65;
+        }
+        button {
+            background: #2d8b65;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: 0.3s;
+            font-weight: 600;
+        }
+        button:hover {
+            background: #1a3b2e;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+        .item {
+            background: #f8fdf8;
+            padding: 1rem;
+            border-radius: 10px;
+            border: 1px solid #c0ead8;
+        }
+        .item h3 {
+            color: #1c5e45;
+            margin-bottom: 0.5rem;
+        }
+        .item p {
+            color: #3d6e58;
+            margin-bottom: 0.25rem;
+        }
+        .complete-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+        .complete-btn:hover {
+            background: #218838;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: #2d8b65;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .hidden {
+            display: none;
+        }
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        .checkbox-group label {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0;
+        }
+        .checkbox-group input {
+            width: auto;
+            margin-right: 0.5rem;
+        }
+        .connection-info {
+            margin-bottom: 1.5rem;
+            padding: 0.75rem 1rem;
+            background: #e6fff0;
+            border: 1px solid #b9edd4;
+            border-radius: 10px;
+            color: #2d8b65;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="doctor-container">
+        <a href="index.php" class="back-link">← Back to Home</a>
+        <div class="connection-info">Connected to <strong><?php echo htmlspecialchars($config['dbname']); ?></strong> as <strong><?php echo htmlspecialchars($config['user']); ?></strong>.</div>
+        <h1>👨‍⚕️ Mint OPD · Doctor Panel</h1>
+
+        <!-- Login Section -->
+        <div id="login-section" class="section">
+            <h2>Login</h2>
+            <div class="form-group">
+                <label for="login-email">Email</label>
+                <input type="email" id="login-email" placeholder="Enter your email">
+            </div>
+            <div class="form-group">
+                <label for="login-password">Password</label>
+                <input type="password" id="login-password" placeholder="Enter password">
+            </div>
+            <button onclick="loginDoctor()">Login</button>
+        </div>
+
+        <!-- Doctor Dashboard (hidden initially) -->
+        <div id="dashboard" class="hidden">
+            <div class="section">
+                <h2>Welcome, Dr. <span id="doctor-name"></span> <small id="doctor-hospital" style="color: #3d6e58; font-weight: normal;"></small>!</h2>
+                <button onclick="logoutDoctor()">Logout</button>
+            </div>
+
+            <!-- Set Available Slots Section -->
+            <div class="section">
+                <h2>Set Available Time Slots</h2>
+                <div id="current-slots-display" style="margin-bottom: 1rem; padding: 1rem; background: #f0faf0; border-radius: 10px; border: 1px solid #c0ead8;">
+                    <h3 style="color: #1c5e45; margin-bottom: 0.5rem;">Current Slots:</h3>
+                    <div id="current-slots-list">No slots set yet.</div>
+                </div>
+                <div class="form-group">
+                    <label for="slot-date">Date</label>
+                    <input type="date" id="slot-date">
+                </div>
+                <div class="form-group">
+                    <label>Available Time Slots</label>
+                    <div class="checkbox-group">
+                        <label><input type="checkbox" value="9:00 AM - 10:00 AM"> 9:00 AM - 10:00 AM</label>
+                        <label><input type="checkbox" value="10:00 AM - 11:00 AM"> 10:00 AM - 11:00 AM</label>
+                        <label><input type="checkbox" value="11:00 AM - 12:00 PM"> 11:00 AM - 12:00 PM</label>
+                        <label><input type="checkbox" value="2:00 PM - 3:00 PM"> 2:00 PM - 3:00 PM</label>
+                        <label><input type="checkbox" value="3:00 PM - 4:00 PM"> 3:00 PM - 4:00 PM</label>
+                        <label><input type="checkbox" value="4:00 PM - 5:00 PM"> 4:00 PM - 5:00 PM</label>
+                    </div>
+                </div>
+                <button onclick="setSlots()">Set Available Slots</button>
+            </div>
+
+            <!-- Today's Appointments Section -->
+            <div class="section">
+                <h2>Today's Appointments</h2>
+                <div id="today-appointments" class="grid"></div>
+            </div>
+
+            <!-- Available Beds Section -->
+            <div class="section">
+                <h2>Available Beds in Hospital</h2>
+                <div id="available-beds" class="grid"></div>
+            </div>
+
+            <!-- Appointment History Section -->
+            <div class="section">
+                <h2>Appointment History</h2>
+                <div id="appointment-history" class="grid"></div>
+            </div>
+
+            <!-- Follow-up Patients Section -->
+            <div class="section">
+                <h2>Follow-up Patients</h2>
+                <div id="follow-up-patients" class="grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load data from localStorage
+        let cities = JSON.parse(localStorage.getItem('cities')) || [];
+        let hospitals = JSON.parse(localStorage.getItem('hospitals')) || [];
+        let doctors = JSON.parse(localStorage.getItem('doctors')) || [];
+        let patients = JSON.parse(localStorage.getItem('patients')) || [];
+        let appointments = JSON.parse(localStorage.getItem('appointments')) || [];
+        let beds = JSON.parse(localStorage.getItem('beds')) || [];
+
+        let currentDoctor = null;
+
+        // Check if doctor is logged in
+        const loggedInDoctor = JSON.parse(localStorage.getItem('currentDoctor'));
+        if (loggedInDoctor) {
+            currentDoctor = loggedInDoctor;
+            showDashboard();
+        }
+
+        // Update selects
+        function updateSelects() {
+            // No selects needed for login only
+        }
+
+        // Login Doctor
+        function loginDoctor() {
+            const email = document.getElementById('login-email').value.trim();
+            const password = document.getElementById('login-password').value;
+
+            const doctor = doctors.find(d => d.email === email && d.password === password);
+            if (doctor) {
+                currentDoctor = doctor;
+                localStorage.setItem('currentDoctor', JSON.stringify(doctor));
+                showDashboard();
+            } else {
+                alert('Invalid email or password.');
+            }
+        }
+
+        // Logout Doctor
+        function logoutDoctor() {
+            currentDoctor = null;
+            localStorage.removeItem('currentDoctor');
+            document.getElementById('dashboard').classList.add('hidden');
+            document.getElementById('login-section').classList.remove('hidden');
+        }
+
+        // Show Dashboard
+        function showDashboard() {
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('dashboard').classList.remove('hidden');
+            document.getElementById('doctor-name').textContent = currentDoctor.name;
+
+            // Display hospital name
+            const hospital = hospitals.find(h => h.id === currentDoctor.hospitalId);
+            const hospitalName = hospital ? hospital.name : 'Unknown Hospital';
+            document.getElementById('doctor-hospital').textContent = `(${hospitalName})`;
+
+            updateSelects();
+            displayCurrentSlots();
+            displayTodayAppointments();
+            displayAvailableBeds();
+            displayAppointmentHistory();
+            displayFollowUpPatients();
+        }
+
+        // Set Available Slots
+        function setSlots() {
+            const date = document.getElementById('slot-date').value;
+            const checkedSlots = Array.from(document.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
+
+            if (date && checkedSlots.length > 0) {
+                // Initialize availableSlots if it doesn't exist
+                if (!currentDoctor.availableSlots) {
+                    currentDoctor.availableSlots = [];
+                }
+
+                const existingSlotIndex = currentDoctor.availableSlots.findIndex(s => s.date === date);
+                if (existingSlotIndex >= 0) {
+                    currentDoctor.availableSlots[existingSlotIndex].slots = checkedSlots;
+                } else {
+                    currentDoctor.availableSlots.push({ date, slots: checkedSlots });
+                }
+                // Update in doctors array
+                const doctorIndex = doctors.findIndex(d => d.id === currentDoctor.id);
+                doctors[doctorIndex] = currentDoctor;
+                localStorage.setItem('doctors', JSON.stringify(doctors));
+                alert('Slots updated successfully!');
+                displayCurrentSlots();
+                // Clear checkboxes
+                document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+                document.getElementById('slot-date').value = '';
+            } else {
+                alert('Please select a date and at least one time slot.');
+            }
+        }
+
+        // Display Current Slots
+        function displayCurrentSlots() {
+            const slotsList = document.getElementById('current-slots-list');
+            if (!currentDoctor.availableSlots || currentDoctor.availableSlots.length === 0) {
+                slotsList.innerHTML = '<p style="color: #3d6e58;">No slots set yet. Please set your available time slots above.</p>';
+                return;
+            }
+
+            const sortedSlots = currentDoctor.availableSlots.sort((a, b) => new Date(a.date) - new Date(b.date));
+            slotsList.innerHTML = sortedSlots.map(slotInfo => {
+                const dateObj = new Date(slotInfo.date);
+                const formattedDate = dateObj.toLocaleDateString();
+                const isToday = formattedDate === new Date().toLocaleDateString();
+                return `
+                    <div style="margin-bottom: 1rem; padding: 0.5rem; background: white; border-radius: 5px; border: 1px solid #c0ead8;">
+                        <strong style="color: ${isToday ? '#2d8b65' : '#1c5e45'};">${formattedDate}${isToday ? ' (Today)' : ''}:</strong>
+                        <div style="margin-top: 0.25rem; color: #3d6e58;">
+                            ${slotInfo.slots.join(', ')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Display Today's Appointments
+        function displayTodayAppointments() {
+            const today = new Date().toLocaleDateString();
+            const todayAppointments = appointments.filter(a => a.doctorId === currentDoctor.id && a.date === today && !a.completed);
+            const appointmentsDiv = document.getElementById('today-appointments');
+            appointmentsDiv.innerHTML = todayAppointments.map(appointment => {
+                const patient = patients.find(p => p.id === appointment.patientId);
+                return `
+                    <div class="item">
+                        <h3>Queue: ${appointment.queueNumber}</h3>
+                        <p><strong>Patient:</strong> ${patient ? patient.name : 'Unknown'}</p>
+                        <p><strong>Slot:</strong> ${appointment.slot || 'N/A'}</p>
+                        <button class="complete-btn" onclick="completeAppointment(${appointment.id})">Complete Treatment</button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Complete Appointment
+        function completeAppointment(appointmentId) {
+            const prescription = prompt('Enter prescription:');
+            if (prescription !== null) {
+                const appointmentIndex = appointments.findIndex(a => a.id === appointmentId);
+                appointments[appointmentIndex].completed = true;
+                appointments[appointmentIndex].prescription = prescription;
+                appointments[appointmentIndex].followUp = confirm('Is this a follow-up case?');
+                localStorage.setItem('appointments', JSON.stringify(appointments));
+                displayTodayAppointments();
+                displayAppointmentHistory();
+                displayFollowUpPatients();
+            }
+        }
+
+        // Display Available Beds
+        function displayAvailableBeds() {
+            const hospitalBeds = beds.filter(b => b.hospitalId === currentDoctor.hospitalId);
+            const bedsDiv = document.getElementById('available-beds');
+            bedsDiv.innerHTML = hospitalBeds.map(bed => `
+                <div class="item">
+                    <h3>${bed.type.charAt(0).toUpperCase() + bed.type.slice(1)} Beds</h3>
+                    <p><strong>Available:</strong> ${bed.total - bed.occupied}</p>
+                </div>
+            `).join('');
+        }
+
+        // Display Appointment History
+        function displayAppointmentHistory() {
+            const historyAppointments = appointments.filter(a => a.doctorId === currentDoctor.id && a.completed);
+            const historyDiv = document.getElementById('appointment-history');
+            historyDiv.innerHTML = historyAppointments.map(appointment => {
+                const patient = patients.find(p => p.id === appointment.patientId);
+                return `
+                    <div class="item">
+                        <h3>${patient ? patient.name : 'Unknown'}</h3>
+                        <p><strong>Date:</strong> ${appointment.date}</p>
+                        <p><strong>Slot:</strong> ${appointment.slot || 'N/A'}</p>
+                        <p><strong>Prescription:</strong> ${appointment.prescription}</p>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Display Follow-up Patients
+        function displayFollowUpPatients() {
+            const followUpAppointments = appointments.filter(a => a.doctorId === currentDoctor.id && a.followUp && !a.completed);
+            const followUpDiv = document.getElementById('follow-up-patients');
+            followUpDiv.innerHTML = followUpAppointments.map(appointment => {
+                const patient = patients.find(p => p.id === appointment.patientId);
+                return `
+                    <div class="item">
+                        <h3>${patient ? patient.name : 'Unknown'}</h3>
+                        <p><strong>Last Visit:</strong> ${appointment.date}</p>
+                        <p><strong>Status:</strong> Ongoing Treatment</p>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Initialize
+        updateSelects();
+    </script>
+</body>
+</html>
